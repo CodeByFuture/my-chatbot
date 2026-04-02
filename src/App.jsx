@@ -35,9 +35,7 @@ function Message({ msg }) {
       <div style={{
         maxWidth: "72%", padding: "12px 16px",
         borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-        background: isUser
-          ? "linear-gradient(135deg, #10b981, #059669)"
-          : "rgba(255,255,255,0.06)",
+        background: isUser ? "linear-gradient(135deg, #10b981, #059669)" : "rgba(255,255,255,0.06)",
         color: isUser ? "#fff" : "#e2e8f0", fontSize: 14.5, lineHeight: 1.6,
         border: isUser ? "none" : "1px solid rgba(255,255,255,0.08)",
         boxShadow: isUser ? "0 4px 16px rgba(16,185,129,0.3)" : "0 2px 8px rgba(0,0,0,0.2)",
@@ -59,23 +57,66 @@ function Message({ msg }) {
 }
 
 export default function App() {
-  const [messages, setMessages] = useState([]);
+  const [sessions, setSessions] = useState(() => {
+    const saved = localStorage.getItem("chat_sessions");
+    return saved ? JSON.parse(saved) : [{ id: Date.now(), name: "Chat 1", messages: [] }];
+  });
+  const [activeId, setActiveId] = useState(() => {
+    const saved = localStorage.getItem("chat_sessions");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed[0]?.id || Date.now();
+    }
+    return Date.now();
+  });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+
+  const activeSession = sessions.find(s => s.id === activeId) || sessions[0];
+  const messages = activeSession?.messages || [];
+
+  useEffect(() => {
+    localStorage.setItem("chat_sessions", JSON.stringify(sessions));
+  }, [sessions]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  function newChat() {
+    const id = Date.now();
+    const newSession = { id, name: `Chat ${sessions.length + 1}`, messages: [] };
+    setSessions(prev => [newSession, ...prev]);
+    setActiveId(id);
+    setError(null);
+  }
+
+  function deleteChat(id) {
+    const updated = sessions.filter(s => s.id !== id);
+    if (updated.length === 0) {
+      const newSession = { id: Date.now(), name: "Chat 1", messages: [] };
+      setSessions([newSession]);
+      setActiveId(newSession.id);
+    } else {
+      setSessions(updated);
+      if (activeId === id) setActiveId(updated[0].id);
+    }
+  }
+
+  function updateMessages(id, newMessages) {
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, messages: newMessages, name: newMessages[0]?.content.slice(0, 25) + "..." || s.name } : s));
+  }
 
   async function sendMessage() {
     const text = input.trim();
     if (!text || loading) return;
 
     const newMessages = [...messages, { role: "user", content: text }];
-    setMessages(newMessages);
+    updateMessages(activeId, newMessages);
     setInput("");
     setLoading(true);
     setError(null);
@@ -104,7 +145,7 @@ export default function App() {
 
       const data = await response.json();
       const reply = data.choices?.[0]?.message?.content || "No response.";
-      setMessages([...newMessages, { role: "assistant", content: reply }]);
+      updateMessages(activeId, [...newMessages, { role: "assistant", content: reply }]);
     } catch (e) {
       setError(e.message || "Something went wrong.");
     } finally {
@@ -124,8 +165,8 @@ export default function App() {
     <div style={{
       minHeight: "100vh",
       background: "linear-gradient(135deg, #0f1a0f 0%, #0f1a15 50%, #0a1a12 100%)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontFamily: "'Georgia', serif", padding: 16,
+      display: "flex",
+      fontFamily: "'Georgia', serif",
     }}>
       <style>{`
         @keyframes bounce {
@@ -145,39 +186,102 @@ export default function App() {
         textarea { resize: none; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+        .session-item:hover { background: rgba(255,255,255,0.08) !important; }
+        .delete-btn:hover { color: #f87171 !important; }
       `}</style>
 
-      <div style={{
-        width: "100%", maxWidth: 680, height: "90vh", maxHeight: 760,
-        display: "flex", flexDirection: "column",
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 24, overflow: "hidden",
-        boxShadow: "0 32px 80px rgba(0,0,0,0.5)",
-      }}>
+      {/* Sidebar */}
+      {sidebarOpen && (
+        <div style={{
+          width: 260, background: "rgba(0,0,0,0.3)",
+          borderRight: "1px solid rgba(255,255,255,0.07)",
+          display: "flex", flexDirection: "column",
+          padding: "16px 12px", gap: 8,
+        }}>
+          {/* Logo */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 4px", marginBottom: 8 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: "50%",
+              background: "linear-gradient(135deg, #10b981, #059669)",
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16,
+            }}>🤖</div>
+            <span style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 15 }}>My AI Chatbot</span>
+          </div>
+
+          {/* New Chat Button */}
+          <button onClick={newChat} style={{
+            background: "linear-gradient(135deg, #10b981, #059669)",
+            border: "none", borderRadius: 10, padding: "10px 14px",
+            color: "#fff", fontSize: 13, cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 8, fontFamily: "inherit",
+            boxShadow: "0 4px 12px rgba(16,185,129,0.3)",
+          }}>
+            ✏️ New Chat
+          </button>
+
+          {/* Chat Sessions */}
+          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
+            {sessions.map(session => (
+              <div
+                key={session.id}
+                className="session-item"
+                style={{
+                  padding: "10px 12px", borderRadius: 8, cursor: "pointer",
+                  background: session.id === activeId ? "rgba(16,185,129,0.15)" : "transparent",
+                  border: session.id === activeId ? "1px solid rgba(16,185,129,0.3)" : "1px solid transparent",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  transition: "all 0.2s",
+                }}
+                onClick={() => setActiveId(session.id)}
+              >
+                <span style={{ color: "#cbd5e1", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                  💬 {session.name}
+                </span>
+                <span
+                  className="delete-btn"
+                  onClick={(e) => { e.stopPropagation(); deleteChat(session.id); }}
+                  style={{ color: "#475569", fontSize: 14, marginLeft: 8, transition: "color 0.2s" }}
+                >✕</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer */}
+          <div style={{ color: "#475569", fontSize: 11, textAlign: "center", paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+            Built by Shehroz ⚡
+          </div>
+        </div>
+      )}
+
+      {/* Main Chat */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", height: "100vh" }}>
 
         {/* Header */}
         <div style={{
-          padding: "20px 24px", borderBottom: "1px solid rgba(255,255,255,0.07)",
+          padding: "16px 24px", borderBottom: "1px solid rgba(255,255,255,0.07)",
           display: "flex", alignItems: "center", gap: 12,
           background: "rgba(255,255,255,0.02)",
         }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: "50%",
-            background: "linear-gradient(135deg, #10b981, #059669)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 20, boxShadow: "0 4px 16px rgba(16,185,129,0.4)",
-          }}>🤖</div>
-          <div>
-            <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 16 }}>My AI Chatbot</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-              <div style={{
-                width: 6, height: 6, borderRadius: "50%", background: "#22c55e",
-                animation: "pulse 2s infinite",
-              }} />
-              <span style={{ color: "#94a3b8", fontSize: 12 }}>Powered by Groq + Llama 3.3</span>
-            </div>
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{
+            background: "transparent", border: "none", color: "#94a3b8",
+            fontSize: 18, cursor: "pointer", padding: 4,
+          }}>☰</button>
+          <div style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 15 }}>
+            {activeSession?.name || "New Chat"}
           </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 8 }}>
+            <div style={{
+              width: 6, height: 6, borderRadius: "50%", background: "#22c55e",
+              animation: "pulse 2s infinite",
+            }} />
+            <span style={{ color: "#94a3b8", fontSize: 12 }}>Powered by Groq + Llama 3.3</span>
+          </div>
+          <button onClick={newChat} style={{
+            marginLeft: "auto", background: "rgba(16,185,129,0.15)",
+            border: "1px solid rgba(16,185,129,0.3)", borderRadius: 8,
+            padding: "6px 12px", color: "#10b981", fontSize: 12,
+            cursor: "pointer", fontFamily: "inherit",
+          }}>+ New Chat</button>
         </div>
 
         {/* Messages */}
