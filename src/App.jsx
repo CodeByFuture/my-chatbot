@@ -73,8 +73,10 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [listening, setListening] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const recognitionRef = useRef(null);
 
   const activeSession = sessions.find(s => s.id === activeId) || sessions[0];
   const messages = activeSession?.messages || [];
@@ -86,6 +88,39 @@ export default function App() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  // Setup speech recognition
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = "en-US";
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(prev => prev + transcript);
+        setListening(false);
+      };
+      recognition.onerror = () => setListening(false);
+      recognition.onend = () => setListening(false);
+      recognitionRef.current = recognition;
+    }
+  }, []);
+
+  function toggleVoice() {
+    if (!recognitionRef.current) {
+      alert("Voice input is not supported in your browser. Try Chrome!");
+      return;
+    }
+    if (listening) {
+      recognitionRef.current.stop();
+      setListening(false);
+    } else {
+      recognitionRef.current.start();
+      setListening(true);
+    }
+  }
 
   function newChat() {
     const id = Date.now();
@@ -108,7 +143,10 @@ export default function App() {
   }
 
   function updateMessages(id, newMessages) {
-    setSessions(prev => prev.map(s => s.id === id ? { ...s, messages: newMessages, name: newMessages[0]?.content.slice(0, 25) + "..." || s.name } : s));
+    setSessions(prev => prev.map(s => s.id === id ? {
+      ...s, messages: newMessages,
+      name: newMessages[0]?.content.slice(0, 25) + "..." || s.name
+    } : s));
   }
 
   async function sendMessage() {
@@ -165,8 +203,7 @@ export default function App() {
     <div style={{
       minHeight: "100vh",
       background: "linear-gradient(135deg, #0f1a0f 0%, #0f1a15 50%, #0a1a12 100%)",
-      display: "flex",
-      fontFamily: "'Georgia', serif",
+      display: "flex", fontFamily: "'Georgia', serif",
     }}>
       <style>{`
         @keyframes bounce {
@@ -179,6 +216,10 @@ export default function App() {
         }
         @keyframes pulse {
           0%, 100% { opacity: 1; } 50% { opacity: 0.6; }
+        }
+        @keyframes micPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+          50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         textarea::placeholder { color: rgba(148,163,184,0.5); }
@@ -198,7 +239,6 @@ export default function App() {
           display: "flex", flexDirection: "column",
           padding: "16px 12px", gap: 8,
         }}>
-          {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 4px", marginBottom: 8 }}>
             <div style={{
               width: 32, height: 32, borderRadius: "50%",
@@ -208,7 +248,6 @@ export default function App() {
             <span style={{ color: "#f1f5f9", fontWeight: 600, fontSize: 15 }}>My AI Chatbot</span>
           </div>
 
-          {/* New Chat Button */}
           <button onClick={newChat} style={{
             background: "linear-gradient(135deg, #10b981, #059669)",
             border: "none", borderRadius: 10, padding: "10px 14px",
@@ -219,7 +258,6 @@ export default function App() {
             ✏️ New Chat
           </button>
 
-          {/* Chat Sessions */}
           <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
             {sessions.map(session => (
               <div
@@ -246,7 +284,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* Footer */}
           <div style={{ color: "#475569", fontSize: 11, textAlign: "center", paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
             Built by Shehroz ⚡
           </div>
@@ -293,7 +330,8 @@ export default function App() {
             }}>
               <div style={{ fontSize: 48 }}>🤖</div>
               <div style={{ color: "#94a3b8", fontSize: 15, textAlign: "center" }}>
-                Hello! How can I help you today?
+                Hello! How can I help you today?<br/>
+                <span style={{ fontSize: 13 }}>Type or use the 🎤 mic to speak!</span>
               </div>
             </div>
           )}
@@ -335,17 +373,34 @@ export default function App() {
           background: "rgba(255,255,255,0.02)",
           display: "flex", gap: 12, alignItems: "flex-end",
         }}>
+          {/* Mic Button */}
+          <button
+            onClick={toggleVoice}
+            style={{
+              width: 44, height: 44, borderRadius: "50%",
+              background: listening ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.05)",
+              border: listening ? "1px solid rgba(239,68,68,0.5)" : "1px solid rgba(255,255,255,0.1)",
+              color: listening ? "#ef4444" : "#94a3b8",
+              fontSize: 18, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0, transition: "all 0.2s",
+              animation: listening ? "micPulse 1s infinite" : "none",
+            }}
+          >
+            {listening ? "⏹" : "🎤"}
+          </button>
+
           <div style={{
             flex: 1, background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 16, padding: "10px 16px",
+            border: listening ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 16, padding: "10px 16px", transition: "border 0.2s",
           }}>
             <textarea
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKey}
-              placeholder="Type a message… (Enter to send)"
+              placeholder={listening ? "🎤 Listening... speak now!" : "Type a message or click 🎤 to speak…"}
               rows={1}
               style={{
                 width: "100%", background: "transparent", border: "none",
@@ -354,6 +409,7 @@ export default function App() {
               }}
             />
           </div>
+
           <button
             onClick={sendMessage}
             disabled={!input.trim() || loading}
