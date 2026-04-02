@@ -1,0 +1,1 @@
+{"name":"my-chatbot","private":true,"version":"0.0.0","main":"electron.cjs","scripts":{"dev":"vite","build":"vite build","lint":"eslint .","preview":"vite preview","electron":"electron ."},"dependencies":{"react":"^19.2.4","react-dom":"^19.2.4"},"devDependencies":{"@eslint/js":"^9.39.4","@vitejs/plugin-react":"^6.0.1","electron":"^41.1.1","vite":"^8.0.1"}}
