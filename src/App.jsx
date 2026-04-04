@@ -105,7 +105,8 @@ function Message({ msg }) {
           {msg.isImage ? (
             <div>
               <div style={{ color: isUser ? "rgba(255,255,255,0.8)" : "#94a3b8", fontSize: 12, marginBottom: 8 }}>🎨 {msg.content}</div>
-              <img src={msg.imageUrl} alt="generated" style={{ width: "100%", maxWidth: 300, borderRadius: 12, display: "block" }} onError={e => e.target.style.display = "none"} />
+              <img src={msg.imageUrl} alt="generated" style={{ width: "100%", maxWidth: 300, borderRadius: 12, display: "block", marginBottom: 8 }} onError={e => e.target.style.display = "none"} />
+              <a href={msg.imageUrl} download={`image-${Date.now()}.jpg`} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.15)", borderRadius: 8, padding: "5px 12px", color: "#fff", fontSize: 12, textDecoration: "none" }}>⬇ Download Image</a>
             </div>
           ) : msg.content}
         </div>
