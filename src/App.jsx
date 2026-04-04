@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+import { createClient } from "@supabase/supabase-js";
 
 const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const TAVILY_KEY = import.meta.env.VITE_TAVILY_API_KEY;
