@@ -155,7 +155,8 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    if (!activeId || !user || user.isDev) return;
+    if (!activeId || !user) return;
+    if (user.isDev) { setMessages([]); return; }
     loadMessages(activeId);
   }, [activeId]);
 
@@ -174,11 +175,13 @@ export default function App() {
 
   async function loadSessions() {
     if (!supabase || !user?.id) return;
-    const { data, error } = await supabase.from("chat_sessions").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
-    if (error) console.error("Failed to load chat sessions", error);
-    setSessions(data || []);
-    if (data?.length > 0) setActiveId(data[0].id);
-    else createSession();
+    const { data } = await supabase.from("chat_sessions").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    if (data && data.length > 0) {
+      setSessions(data);
+      setActiveId(data[0].id);
+    } else {
+      await createSession();
+    }
   }
 
   async function loadMessages(sid) {
@@ -249,23 +252,25 @@ export default function App() {
 
       if (!user?.isDev && supabase) {
         try {
-          const { data: u, error: uError } = await supabase.from("messages").insert({ session_id: activeId, role: "user", content: userContent }).select().single();
-          if (uError) throw uError;
-
-          const { data: a, error: aError } = await supabase.from("messages").insert({ session_id: activeId, role: "assistant", content: prompt, is_image: true, image_url: imageUrl }).select().single();
-          if (aError) throw aError;
-
-          setMessages(prev => prev.map(msg => {
-            if (msg.id === uMsg.id) return u;
-            if (msg.id === aMsg.id) return { ...a, isImage: true, imageUrl };
-            return msg;
-          }));
+          const { data: u } = await supabase.from("messages").insert({ session_id: activeId, role: "user", content: userContent }).select().single();
+          const { data: a } = await supabase.from("messages").insert({ session_id: activeId, role: "assistant", content: prompt, is_image: true, image_url: imageUrl }).select().single();
+          if (u && a) {
+            setMessages(prev => prev.map(msg => {
+              if (msg.id === uMsg.id) return u;
+              if (msg.id === aMsg.id) return { ...a, isImage: true, imageUrl };
+              return msg;
+            }));
+          }
         } catch (saveError) {
-          console.error("Image generated but message save failed", saveError);
+          console.error("Image save failed", saveError);
         }
       }
-    } catch (e) { setError("Image generation failed. Try again!"); }
-    finally { setGeneratingImage(false); }
+    } catch (e) {
+      setError("Image generation failed. Try again!");
+    } finally {
+      setGeneratingImage(false);
+      setImageMode(false); // reset image mode so next message is normal chat
+    }
   }
 
   async function sendMessage() {
