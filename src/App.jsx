@@ -234,16 +234,28 @@ export default function App() {
     try {
       const seed = Math.floor(Math.random() * 999999);
       const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true&seed=${seed}`;
-      const uMsg = { id: Date.now(), role: "user", content: `🎨 ${prompt}` };
-      const aMsg = { id: Date.now() + 1, role: "assistant", content: prompt, isImage: true, imageUrl };
+      const timestamp = Date.now();
+      const userContent = `🎨 ${prompt}`;
+      const uMsg = { id: `img-user-${timestamp}`, role: "user", content: userContent };
+      const aMsg = { id: `img-assistant-${timestamp}`, role: "assistant", content: prompt, isImage: true, imageUrl };
+
+      setMessages(prev => {
+        if (prev.length === 0) updateSessionName(activeId, `Image: ${prompt}`);
+        return [...prev, uMsg, aMsg];
+      });
+
       if (!user?.isDev && supabase) {
-        const { data: u } = await supabase.from("messages").insert({ session_id: activeId, role: "user", content: `🎨 ${prompt}` }).select().single();
-        const { data: a } = await supabase.from("messages").insert({ session_id: activeId, role: "assistant", content: prompt, is_image: true, image_url: imageUrl }).select().single();
-        if (u) setMessages(p => [...p, u]);
-        if (a) setMessages(p => [...p, { ...a, isImage: true, imageUrl }]);
-        if (messages.length === 0) updateSessionName(activeId, `Image: ${prompt}`);
-      } else {
-        setMessages(p => [...p, uMsg, aMsg]);
+        const { data: u, error: uError } = await supabase.from("messages").insert({ session_id: activeId, role: "user", content: userContent }).select().single();
+        if (uError) throw uError;
+
+        const { data: a, error: aError } = await supabase.from("messages").insert({ session_id: activeId, role: "assistant", content: prompt, is_image: true, image_url: imageUrl }).select().single();
+        if (aError) throw aError;
+
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === uMsg.id) return u;
+          if (msg.id === aMsg.id) return { ...a, isImage: true, imageUrl };
+          return msg;
+        }));
       }
     } catch (e) { setError("Image generation failed. Try again!"); }
     finally { setGeneratingImage(false); }
@@ -469,3 +481,4 @@ export default function App() {
     </div>
   );
 }
+
