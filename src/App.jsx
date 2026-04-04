@@ -18,6 +18,15 @@ function AuthScreen({ onAuth }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  function handleDevAccess() {
+    const secret = prompt("Enter developer password:");
+    if (secret === "Chatbotbyfuture") {
+      onAuth({ id: "dev-user", email: "developer@shehroz.dev", isDev: true });
+    } else {
+      alert("Wrong password!");
+    }
+  }
+
   async function handleSubmit() {
     if (!email || !password) return setError("Please fill in all fields");
     setLoading(true); setError(""); setMessage("");
@@ -62,6 +71,9 @@ function AuthScreen({ onAuth }) {
           <button onClick={handleSubmit} disabled={loading} style={{ background: "linear-gradient(135deg, #10b981, #059669)", border: "none", borderRadius: 12, padding: "12px", color: "#fff", fontSize: 14, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit", marginTop: 4, boxShadow: "0 4px 16px rgba(16,185,129,0.3)", opacity: loading ? 0.7 : 1 }}>
             {loading ? "Please wait..." : isLogin ? "Login" : "Create Account"}
           </button>
+          <div style={{ textAlign: "center", marginTop: 8 }}>
+            <button onClick={handleDevAccess} style={{ background: "transparent", border: "none", color: "#334155", cursor: "pointer", fontSize: 11, fontFamily: "inherit", textDecoration: "underline" }}>Developer Access</button>
+          </div>
         </div>
       </div>
     </div>
@@ -140,12 +152,23 @@ export default function App() {
 
   // Load sessions when user logs in
   useEffect(() => {
-    if (user) loadSessions();
+    if (user) {
+      if (user.isDev) {
+        const devSession = { id: "dev-session-1", name: "Dev Chat", user_id: "dev-user" };
+        setSessions([devSession]);
+        setActiveId("dev-session-1");
+      } else {
+        loadSessions();
+      }
+    }
   }, [user]);
 
   // Load messages when session changes
   useEffect(() => {
-    if (activeId) loadMessages(activeId);
+    if (activeId) {
+      if (user?.isDev) setMessages([]);
+      else loadMessages(activeId);
+    }
   }, [activeId]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading, searching]);
@@ -175,6 +198,13 @@ export default function App() {
   }
 
   async function createSession() {
+    if (user?.isDev) {
+      const devSession = { id: `dev-session-${Date.now()}`, name: "Dev Chat", user_id: "dev-user" };
+      setSessions(prev => [devSession, ...prev]);
+      setActiveId(devSession.id);
+      setMessages([]);
+      return devSession;
+    }
     const { data } = await supabase.from("chat_sessions").insert({ user_id: user.id, name: "New Chat" }).select().single();
     if (data) { setSessions(prev => [data, ...prev]); setActiveId(data.id); setMessages([]); }
     return data;
@@ -243,10 +273,14 @@ export default function App() {
     let finalContent = text;
     let searched = false;
 
-    // Save user message to DB
-    const { data: userMsg } = await supabase.from("messages").insert({ session_id: activeId, role: "user", content: text }).select().single();
-    if (userMsg) setMessages(prev => [...prev, userMsg]);
-    if (messages.length === 0) await updateSessionName(activeId, text);
+    // Save user message to DB (skip for dev)
+    let userMsg = { id: Date.now(), session_id: activeId, role: "user", content: text };
+    if (!user?.isDev) {
+      const { data } = await supabase.from("messages").insert({ session_id: activeId, role: "user", content: text }).select().single();
+      if (data) userMsg = data;
+    }
+    setMessages(prev => [...prev, userMsg]);
+    if (messages.length === 0 && !user?.isDev) await updateSessionName(activeId, text);
 
     try {
       if (webSearch) {
@@ -288,7 +322,9 @@ export default function App() {
       const data = await response.json();
       const reply = data.choices?.[0]?.message?.content || "No response.";
 
-      const { data: aiMsg } = await supabase.from("messages").insert({ session_id: activeId, role: "assistant", content: reply, searched }).select().single();
+      const { data: aiMsg } = user?.isDev
+        ? { data: { id: Date.now() + 1, session_id: activeId, role: "assistant", content: reply, searched } }
+        : await supabase.from("messages").insert({ session_id: activeId, role: "assistant", content: reply, searched }).select().single();
       if (aiMsg) setMessages(prev => [...prev, { ...aiMsg, searched }]);
     } catch (e) { setSearching(false); setError(e.message || "Something went wrong."); }
     finally { setLoading(false); setTimeout(() => inputRef.current?.focus(), 50); }
