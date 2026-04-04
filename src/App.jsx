@@ -174,7 +174,8 @@ export default function App() {
 
   async function loadSessions() {
     if (!supabase || !user?.id) return;
-    const { data } = await supabase.from("chat_sessions").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("chat_sessions").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    if (error) console.error("Failed to load chat sessions", error);
     setSessions(data || []);
     if (data?.length > 0) setActiveId(data[0].id);
     else createSession();
@@ -182,7 +183,8 @@ export default function App() {
 
   async function loadMessages(sid) {
     if (!supabase) return;
-    const { data } = await supabase.from("messages").select("*").eq("session_id", sid).order("created_at", { ascending: true });
+    const { data, error } = await supabase.from("messages").select("*").eq("session_id", sid).order("created_at", { ascending: true });
+    if (error) console.error("Failed to load messages", { sid, error });
     setMessages(data?.map(m => ({ ...m, isImage: m.is_image, imageUrl: m.image_url })) || []);
   }
 
@@ -192,7 +194,8 @@ export default function App() {
       setSessions(p => [s, ...p]); setActiveId(s.id); setMessages([]); return s;
     }
     if (!supabase) return;
-    const { data } = await supabase.from("chat_sessions").insert({ user_id: user.id, name: "New Chat" }).select().single();
+    const { data, error } = await supabase.from("chat_sessions").insert({ user_id: user.id, name: "New Chat" }).select().single();
+    if (error) console.error("Failed to create chat session", { userId: user.id, error });
     if (data) { setSessions(p => [data, ...p]); setActiveId(data.id); setMessages([]); }
     return data;
   }
@@ -286,7 +289,8 @@ export default function App() {
 
     // Save to DB
     if (!user?.isDev && supabase) {
-      const { data } = await supabase.from("messages").insert({ session_id: activeId, role: "user", content: text }).select().single();
+      const { data, error: saveUserMessageError } = await supabase.from("messages").insert({ session_id: activeId, role: "user", content: text }).select().single();
+      if (saveUserMessageError) console.error("Failed to save user message", { activeId, error: saveUserMessageError });
       if (data) setMessages(p => p.map(m => m.id === tempMsg.id ? data : m));
       if (messages.length === 0) updateSessionName(activeId, text);
     }
@@ -338,7 +342,8 @@ export default function App() {
 
       const aiMsg = { id: Date.now(), role: "assistant", content: reply, searched };
       if (!user?.isDev && supabase) {
-        const { data: saved } = await supabase.from("messages").insert({ session_id: activeId, role: "assistant", content: reply, searched }).select().single();
+        const { data: saved, error: saveAssistantMessageError } = await supabase.from("messages").insert({ session_id: activeId, role: "assistant", content: reply, searched }).select().single();
+        if (saveAssistantMessageError) console.error("Failed to save assistant message", { activeId, error: saveAssistantMessageError });
         if (saved) setMessages(p => [...p, { ...saved, searched }]);
         else setMessages(p => [...p, aiMsg]);
       } else {
