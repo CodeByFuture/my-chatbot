@@ -273,8 +273,8 @@ export default function App() {
 
     // Image generation mode
     if (imageMode) {
-      await generateImage(text);
       setLoading(false);
+      await generateImage(text);
       return;
     }
 
