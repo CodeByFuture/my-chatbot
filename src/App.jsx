@@ -231,22 +231,51 @@ export default function App() {
   async function generateImage(prompt) {
     setGeneratingImage(true);
     setError(null);
+    const tempId = Date.now();
+    const tempUserId = `temp-image-user-${tempId}`;
+    const tempAssistantId = `temp-image-assistant-${tempId}`;
+    const userContent = `Image prompt: ${prompt}`;
+
     try {
       const seed = Math.floor(Math.random() * 999999);
       const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true&seed=${seed}`;
-      const uMsg = { id: Date.now(), role: "user", content: `🎨 ${prompt}` };
-      const aMsg = { id: Date.now() + 1, role: "assistant", content: prompt, isImage: true, imageUrl };
+      const uMsg = { id: tempUserId, role: "user", content: userContent };
+      const aMsg = { id: tempAssistantId, role: "assistant", content: prompt, isImage: true, imageUrl };
+
+      setMessages(p => [...p, uMsg, aMsg]);
+      if (messages.length === 0) updateSessionName(activeId, `Image: ${prompt}`);
+
       if (!user?.isDev && supabase) {
-        const { data: u } = await supabase.from("messages").insert({ session_id: activeId, role: "user", content: `🎨 ${prompt}` }).select().single();
-        const { data: a } = await supabase.from("messages").insert({ session_id: activeId, role: "assistant", content: prompt, is_image: true, image_url: imageUrl }).select().single();
-        if (u) setMessages(p => [...p, u]);
-        if (a) setMessages(p => [...p, { ...a, isImage: true, imageUrl }]);
-        if (messages.length === 0) updateSessionName(activeId, `Image: ${prompt}`);
-      } else {
-        setMessages(p => [...p, uMsg, aMsg]);
+        const { data: savedUser, error: userError } = await supabase
+          .from("messages")
+          .insert({ session_id: activeId, role: "user", content: userContent })
+          .select()
+          .single();
+
+        const { data: savedAssistant, error: assistantError } = await supabase
+          .from("messages")
+          .insert({ session_id: activeId, role: "assistant", content: prompt, is_image: true, image_url: imageUrl })
+          .select()
+          .single();
+
+        if (userError || assistantError) {
+          console.error("Failed to save generated image messages", { userError, assistantError });
+          setError("Image generated, but it could not be saved to chat history.");
+        }
+
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === tempUserId && savedUser) return savedUser;
+          if (msg.id === tempAssistantId && savedAssistant) {
+            return { ...savedAssistant, isImage: true, imageUrl: savedAssistant.image_url || imageUrl };
+          }
+          return msg;
+        }));
       }
-    } catch (e) { setError("Image generation failed. Try again!"); }
-    finally { setGeneratingImage(false); }
+    } catch (e) {
+      console.error("Image generation failed", e);
+      setMessages(prev => prev.filter(msg => msg.id !== tempUserId && msg.id !== tempAssistantId));
+      setError("Image generation failed. Try again!");
+    } finally { setGeneratingImage(false); }
   }
 
   async function sendMessage() {
@@ -469,3 +498,4 @@ export default function App() {
     </div>
   );
 }
+
