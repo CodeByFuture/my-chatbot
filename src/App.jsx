@@ -246,22 +246,37 @@ export default function App() {
 
   async function generateImage(prompt) {
     setGeneratingImage(true);
-    const encodedPrompt = encodeURIComponent(prompt);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true`;
+    setError(null);
+    try {
+      const seed = Math.floor(Math.random() * 999999);
+      const encodedPrompt = encodeURIComponent(prompt);
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&seed=${seed}`;
 
-    if (user?.isDev) {
-      const uMsg = { id: Date.now(), role: "user", content: `Generate image: ${prompt}` };
-      const aMsg = { id: Date.now() + 1, role: "assistant", content: prompt, isImage: true, imageUrl };
-      setMessages(prev => [...prev, uMsg, aMsg]);
-    } else {
-      const userMsg = { session_id: activeId, role: "user", content: `Generate image: ${prompt}` };
-      const aiMsg = { session_id: activeId, role: "assistant", content: prompt, is_image: true, image_url: imageUrl };
-      const { data: uData } = await supabase.from("messages").insert(userMsg).select().single();
-      const { data: aData } = await supabase.from("messages").insert(aiMsg).select().single();
-      if (uData && aData) setMessages(prev => [...prev, { ...uData, content: `Generate image: ${prompt}` }, { ...aData, isImage: true, imageUrl }]);
-      if (messages.length === 0) await updateSessionName(activeId, `Image: ${prompt}`);
+      // Wait for image to actually load before showing it
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = imageUrl;
+        setTimeout(resolve, 15000); // max 15s wait
+      });
+
+      if (user?.isDev) {
+        const uMsg = { id: Date.now(), role: "user", content: `🎨 ${prompt}` };
+        const aMsg = { id: Date.now() + 1, role: "assistant", content: prompt, isImage: true, imageUrl };
+        setMessages(prev => [...prev, uMsg, aMsg]);
+      } else {
+        const { data: uData } = await supabase.from("messages").insert({ session_id: activeId, role: "user", content: `🎨 ${prompt}` }).select().single();
+        const { data: aData } = await supabase.from("messages").insert({ session_id: activeId, role: "assistant", content: prompt, is_image: true, image_url: imageUrl }).select().single();
+        if (uData) setMessages(prev => [...prev, uData]);
+        if (aData) setMessages(prev => [...prev, { ...aData, isImage: true, imageUrl }]);
+        if (messages.length === 0) await updateSessionName(activeId, `Image: ${prompt}`);
+      }
+    } catch (e) {
+      setError("Image generation failed. Try again!");
+    } finally {
+      setGeneratingImage(false);
     }
-    setGeneratingImage(false);
   }
 
   async function sendMessage() {
