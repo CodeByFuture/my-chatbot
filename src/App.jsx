@@ -247,12 +247,19 @@ export default function App() {
     setGeneratingImage(true);
     const encodedPrompt = encodeURIComponent(prompt);
     const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true`;
-    const userMsg = { session_id: activeId, role: "user", content: `Generate image: ${prompt}` };
-    const aiMsg = { session_id: activeId, role: "assistant", content: prompt, isImage: true, imageUrl };
-    const { data: uData } = await supabase.from("messages").insert(userMsg).select().single();
-    const { data: aData } = await supabase.from("messages").insert(aiMsg).select().single();
-    if (uData && aData) setMessages(prev => [...prev, { ...uData, content: `Generate image: ${prompt}` }, { ...aData, isImage: true, imageUrl }]);
-    if (messages.length === 0) await updateSessionName(activeId, `Image: ${prompt}`);
+
+    if (user?.isDev) {
+      const uMsg = { id: Date.now(), role: "user", content: `Generate image: ${prompt}` };
+      const aMsg = { id: Date.now() + 1, role: "assistant", content: prompt, isImage: true, imageUrl };
+      setMessages(prev => [...prev, uMsg, aMsg]);
+    } else {
+      const userMsg = { session_id: activeId, role: "user", content: `Generate image: ${prompt}` };
+      const aiMsg = { session_id: activeId, role: "assistant", content: prompt, isImage: true, imageUrl };
+      const { data: uData } = await supabase.from("messages").insert(userMsg).select().single();
+      const { data: aData } = await supabase.from("messages").insert(aiMsg).select().single();
+      if (uData && aData) setMessages(prev => [...prev, { ...uData, content: `Generate image: ${prompt}` }, { ...aData, isImage: true, imageUrl }]);
+      if (messages.length === 0) await updateSessionName(activeId, `Image: ${prompt}`);
+    }
     setGeneratingImage(false);
   }
 
