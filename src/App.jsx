@@ -195,7 +195,7 @@ export default function App() {
 
   async function loadMessages(sessionId) {
     const { data } = await supabase.from("messages").select("*").eq("session_id", sessionId).order("created_at", { ascending: true });
-    setMessages(data || []);
+    setMessages(data?.map(m => ({ ...m, isImage: m.is_image, imageUrl: m.image_url })) || []);
   }
 
   async function createSession() {
@@ -255,7 +255,7 @@ export default function App() {
       setMessages(prev => [...prev, uMsg, aMsg]);
     } else {
       const userMsg = { session_id: activeId, role: "user", content: `Generate image: ${prompt}` };
-      const aiMsg = { session_id: activeId, role: "assistant", content: prompt, isImage: true, imageUrl };
+      const aiMsg = { session_id: activeId, role: "assistant", content: prompt, is_image: true, image_url: imageUrl };
       const { data: uData } = await supabase.from("messages").insert(userMsg).select().single();
       const { data: aData } = await supabase.from("messages").insert(aiMsg).select().single();
       if (uData && aData) setMessages(prev => [...prev, { ...uData, content: `Generate image: ${prompt}` }, { ...aData, isImage: true, imageUrl }]);
