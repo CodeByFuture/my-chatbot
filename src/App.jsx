@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY;
@@ -24,12 +24,12 @@ function AuthScreen({ onAuth }) {
   function devAccess() {
     const s = prompt("Developer password:");
     if (s === "Chatbotbyfuture") onAuth({ id: "dev", email: "dev@shehroz.dev", isDev: true });
-    else alert("Wrong!");
+    else alert("Wrong password!");
   }
 
   async function submit() {
-    if (!email || !password) return setError("Fill in all fields");
-    if (!supabase) return setError("Auth not available");
+    if (!email || !password) return setError("Please fill in all fields");
+    if (!supabase) return setError("Auth service not available");
     setLoading(true); setError(""); setMsg("");
     try {
       if (isLogin) {
@@ -46,25 +46,25 @@ function AuthScreen({ onAuth }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#0f1a0f,#0a1a12)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia,serif", padding: 16 }}>
-      <div style={{ width: "100%", maxWidth: 380, background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 24, padding: 36, boxShadow: "0 32px 80px rgba(0,0,0,.5)" }}>
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "linear-gradient(135deg,#10b981,#059669)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, margin: "0 auto 12px" }}>🤖</div>
-          <div style={{ color: "#f1f5f9", fontSize: 20, fontWeight: 700 }}>My AI Chatbot</div>
-          <div style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>Built by Shehroz ⚡</div>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#0f1a0f,#0a1a12)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"Georgia,serif", padding:16 }}>
+      <div style={{ width:"100%", maxWidth:380, background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:24, padding:36, boxShadow:"0 32px 80px rgba(0,0,0,.5)" }}>
+        <div style={{ textAlign:"center", marginBottom:28 }}>
+          <div style={{ width:52,height:52,borderRadius:"50%",background:"linear-gradient(135deg,#10b981,#059669)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,margin:"0 auto 12px" }}>🤖</div>
+          <div style={{ color:"#f1f5f9", fontSize:20, fontWeight:700 }}>My AI Chatbot</div>
+          <div style={{ color:"#475569", fontSize:12, marginTop:4 }}>Built by Shehroz ⚡</div>
         </div>
-        <div style={{ display: "flex", background: "rgba(255,255,255,.05)", borderRadius: 10, padding: 3, marginBottom: 20 }}>
+        <div style={{ display:"flex", background:"rgba(255,255,255,.05)", borderRadius:10, padding:3, marginBottom:20 }}>
           {["Login","Sign Up"].map((t,i) => (
             <button key={t} onClick={() => { setIsLogin(i===0); setError(""); setMsg(""); }} style={{ flex:1, padding:"7px", borderRadius:7, border:"none", background:(isLogin?i===0:i===1)?"linear-gradient(135deg,#10b981,#059669)":"transparent", color:(isLogin?i===0:i===1)?"#fff":"#94a3b8", cursor:"pointer", fontSize:13, fontFamily:"inherit" }}>{t}</button>
           ))}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           <input value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder="Email" type="email" style={{ background:"rgba(255,255,255,.05)", border:"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"11px 14px", color:"#e2e8f0", fontSize:14, fontFamily:"inherit", outline:"none" }} />
           <input value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder="Password" type="password" style={{ background:"rgba(255,255,255,.05)", border:"1px solid rgba(255,255,255,.1)", borderRadius:10, padding:"11px 14px", color:"#e2e8f0", fontSize:14, fontFamily:"inherit", outline:"none" }} />
           {error && <div style={{ color:"#f87171", fontSize:12, textAlign:"center" }}>⚠ {error}</div>}
           {msg && <div style={{ color:"#10b981", fontSize:12, textAlign:"center" }}>✓ {msg}</div>}
           <button onClick={submit} disabled={loading} style={{ background:"linear-gradient(135deg,#10b981,#059669)", border:"none", borderRadius:10, padding:"11px", color:"#fff", fontSize:14, cursor:loading?"not-allowed":"pointer", fontFamily:"inherit", opacity:loading?.7:1 }}>
-            {loading ? "Please wait..." : isLogin ? "Login" : "Create Account"}
+            {loading?"Please wait...":isLogin?"Login":"Create Account"}
           </button>
           <div style={{ textAlign:"center" }}>
             <button onClick={devAccess} style={{ background:"transparent", border:"none", color:"#334155", cursor:"pointer", fontSize:11, fontFamily:"inherit", textDecoration:"underline" }}>Developer Access</button>
@@ -88,7 +88,7 @@ function Message({ msg }) {
           {msg.isImage ? (
             <div>
               <div style={{ color:"#94a3b8", fontSize:11, marginBottom:7 }}>🎨 {msg.content}</div>
-              <img src={msg.imageUrl} alt="AI generated" style={{ width:"100%", maxWidth:280, borderRadius:10, display:"block", marginBottom:7 }} onError={e=>e.target.style.display="none"} />
+              <img src={msg.imageUrl} alt="AI" style={{ width:"100%", maxWidth:280, borderRadius:10, display:"block", marginBottom:7 }} onError={e=>{ e.target.style.display="none"; }} />
               <a href={msg.imageUrl} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:5, background:"rgba(255,255,255,.15)", borderRadius:7, padding:"4px 10px", color:"#fff", fontSize:11, textDecoration:"none" }}>⬇ Download</a>
             </div>
           ) : msg.content}
@@ -104,9 +104,11 @@ function Message({ msg }) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+
+  // sessions: { id, name, messages[] }
   const [sessions, setSessions] = useState([]);
   const [activeId, setActiveId] = useState(null);
-  const [messages, setMessages] = useState([]);
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
@@ -118,14 +120,17 @@ export default function App() {
   const [fileText, setFileText] = useState("");
   const [webSearch, setWebSearch] = useState(false);
   const [imageMode, setImageMode] = useState(false);
+
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const recogRef = useRef(null);
   const fileRef = useRef(null);
 
+  // Get active session and its messages
   const activeSession = sessions.find(s => s.id === activeId);
+  const messages = activeSession?.messages || [];
 
-  // Check auth
+  // ── Auth check ──
   useEffect(() => {
     if (!supabase) { setAuthChecked(true); return; }
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -138,27 +143,19 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load sessions on login
+  // ── Init sessions on login ──
   useEffect(() => {
     if (!user) return;
     if (user.isDev) {
-      const s = [{ id: "dev-1", name: "Dev Chat" }];
-      setSessions(s); setActiveId("dev-1"); setMessages([]);
+      initDevSessions();
     } else {
-      loadSessions();
+      initUserSessions();
     }
   }, [user?.id]);
 
-  // Load messages when session changes - only if activeId is valid
-  useEffect(() => {
-    if (!activeId || activeId === "null" || !user) return;
-    if (user.isDev) { setMessages([]); return; }
-    loadMessages(activeId);
-  }, [activeId]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages, loading, imgLoading, searching]);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading, imgLoading, searching]);
-
-  // Voice recognition
+  // ── Voice ──
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
@@ -170,49 +167,95 @@ export default function App() {
     recogRef.current = r;
   }, []);
 
-  async function loadSessions() {
+  // ── Dev mode: store everything in memory ──
+  function initDevSessions() {
+    const first = { id: `dev-${Date.now()}`, name: "New Chat", messages: [] };
+    setSessions([first]);
+    setActiveId(first.id);
+  }
+
+  function addDevSession() {
+    const s = { id: `dev-${Date.now()}`, name: "New Chat", messages: [] };
+    setSessions(p => [s, ...p]);
+    setActiveId(s.id);
+  }
+
+  function updateDevMessages(sessionId, newMessages) {
+    setSessions(p => p.map(s => {
+      if (s.id !== sessionId) return s;
+      const name = s.name === "New Chat" && newMessages.length > 0
+        ? newMessages[0].content.slice(0, 28)
+        : s.name;
+      return { ...s, messages: newMessages, name };
+    }));
+  }
+
+  function deleteDevSession(id) {
+    setSessions(p => {
+      const rest = p.filter(s => s.id !== id);
+      if (rest.length === 0) {
+        const first = { id: `dev-${Date.now()}`, name: "New Chat", messages: [] };
+        setActiveId(first.id);
+        return [first];
+      }
+      if (activeId === id) setActiveId(rest[0].id);
+      return rest;
+    });
+  }
+
+  // ── User mode: store in Supabase ──
+  async function initUserSessions() {
     if (!supabase || !user?.id) return;
     const { data } = await supabase.from("chat_sessions").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
     if (data && data.length > 0) {
-      setSessions(data);
+      const sessionsWithMessages = data.map(s => ({ ...s, messages: [] }));
+      setSessions(sessionsWithMessages);
       setActiveId(data[0].id);
+      loadMessagesForSession(data[0].id, sessionsWithMessages);
     } else {
-      // Create first session
-      const { data: newSess } = await supabase.from("chat_sessions").insert({ user_id: user.id, name: "New Chat" }).select().single();
-      if (newSess) { setSessions([newSess]); setActiveId(newSess.id); setMessages([]); }
+      createUserSession();
     }
   }
 
-  async function loadMessages(sid) {
+  async function loadMessagesForSession(sessionId, currentSessions) {
     if (!supabase) return;
-    const { data } = await supabase.from("messages").select("*").eq("session_id", sid).order("created_at", { ascending: true });
-    setMessages(data?.map(m => ({ ...m, isImage: m.is_image, imageUrl: m.image_url })) || []);
+    const { data } = await supabase.from("messages").select("*").eq("session_id", sessionId).order("created_at", { ascending: true });
+    const msgs = data?.map(m => ({ ...m, isImage: m.is_image, imageUrl: m.image_url })) || [];
+    setSessions(p => (currentSessions || p).map(s => s.id === sessionId ? { ...s, messages: msgs } : s));
   }
 
-  async function newSession() {
-    if (user?.isDev) {
-      const s = { id: `dev-${Date.now()}`, name: "New Chat" };
-      setSessions(p => [s, ...p]); setActiveId(s.id); setMessages([]); return;
-    }
-    if (!supabase || !user?.id) return;
+  async function createUserSession() {
+    if (!supabase || !user?.id) return null;
     const { data } = await supabase.from("chat_sessions").insert({ user_id: user.id, name: "New Chat" }).select().single();
-    if (data) { setSessions(p => [data, ...p]); setActiveId(data.id); setMessages([]); }
-  }
-
-  async function deleteSession(id) {
-    if (!user?.isDev && supabase) await supabase.from("chat_sessions").delete().eq("id", id);
-    const rest = sessions.filter(s => s.id !== id);
-    setSessions(rest);
-    if (activeId === id) {
-      if (rest.length > 0) setActiveId(rest[0].id);
-      else newSession();
+    if (data) {
+      setSessions(p => [{ ...data, messages: [] }, ...p]);
+      setActiveId(data.id);
+      return data.id;
     }
+    return null;
   }
 
-  async function renameSession(id, text) {
-    const name = text.slice(0, 30);
-    setSessions(p => p.map(s => s.id === id ? { ...s, name } : s));
-    if (!user?.isDev && supabase) await supabase.from("chat_sessions").update({ name }).eq("id", id);
+  async function deleteUserSession(id) {
+    if (supabase) await supabase.from("chat_sessions").delete().eq("id", id);
+    setSessions(p => {
+      const rest = p.filter(s => s.id !== id);
+      if (rest.length === 0) { createUserSession(); return []; }
+      if (activeId === id) {
+        setActiveId(rest[0].id);
+        loadMessagesForSession(rest[0].id, rest);
+      }
+      return rest;
+    });
+  }
+
+  async function switchSession(id) {
+    setActiveId(id);
+    if (!user?.isDev) {
+      const session = sessions.find(s => s.id === id);
+      if (session && session.messages.length === 0) {
+        loadMessagesForSession(id, null);
+      }
+    }
   }
 
   function toggleVoice() {
@@ -230,38 +273,52 @@ export default function App() {
     e.target.value = "";
   }
 
-  async function saveMsg(data) {
-    if (user?.isDev || !supabase || !activeId || activeId === "null") return null;
-    const { data: saved } = await supabase.from("messages").insert(data).select().single();
-    return saved;
-  }
-
+  // ── Image generation ──
   async function generateImage(prompt) {
+    if (!activeId) return;
     setImgLoading(true);
     setError(null);
     setImageMode(false);
-    try {
-      const seed = Math.floor(Math.random() * 999999);
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true&seed=${seed}`;
-      const ts = Date.now();
-      const uMsg = { id: `u-${ts}`, role: "user", content: `🎨 ${prompt}` };
-      const aMsg = { id: `a-${ts}`, role: "assistant", content: prompt, isImage: true, imageUrl };
-      setMessages(p => {
-        if (p.length === 0) renameSession(activeId, `Image: ${prompt}`);
-        return [...p, uMsg, aMsg];
-      });
-      const [u, a] = await Promise.all([
-        saveMsg({ session_id: activeId, role: "user", content: `🎨 ${prompt}` }),
-        saveMsg({ session_id: activeId, role: "assistant", content: prompt, is_image: true, image_url: imageUrl }),
-      ]);
-      if (u && a) setMessages(p => p.map(m => m.id === uMsg.id ? u : m.id === aMsg.id ? { ...a, isImage: true, imageUrl } : m));
-    } catch { setError("Image generation failed. Try again!"); }
-    finally { setImgLoading(false); }
+
+    const seed = Math.floor(Math.random() * 999999);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true&seed=${seed}&enhance=true`;
+
+    const uMsg = { id: `u-${Date.now()}`, role:"user", content:`🎨 ${prompt}` };
+    const aMsg = { id: `a-${Date.now()}`, role:"assistant", content:prompt, isImage:true, imageUrl };
+
+    if (user.isDev) {
+      const newMsgs = [...messages, uMsg, aMsg];
+      updateDevMessages(activeId, newMsgs);
+    } else {
+      // Add to UI immediately
+      setSessions(p => p.map(s => s.id === activeId ? { ...s, messages: [...s.messages, uMsg, aMsg] } : s));
+      // Save to DB
+      if (supabase) {
+        const [{ data: u }, { data: a }] = await Promise.all([
+          supabase.from("messages").insert({ session_id: activeId, role:"user", content:`🎨 ${prompt}` }).select().single(),
+          supabase.from("messages").insert({ session_id: activeId, role:"assistant", content:prompt, is_image:true, image_url:imageUrl }).select().single(),
+        ]);
+        if (u && a) {
+          setSessions(p => p.map(s => {
+            if (s.id !== activeId) return s;
+            return { ...s, messages: s.messages.map(m => m.id === uMsg.id ? u : m.id === aMsg.id ? { ...a, isImage:true, imageUrl } : m) };
+          }));
+        }
+        // Update session name
+        if (messages.length === 0) {
+          const name = `Image: ${prompt.slice(0, 25)}`;
+          await supabase.from("chat_sessions").update({ name }).eq("id", activeId);
+          setSessions(p => p.map(s => s.id === activeId ? { ...s, name } : s));
+        }
+      }
+    }
+    setImgLoading(false);
   }
 
+  // ── Send message ──
   async function sendMessage() {
     const text = input.trim();
-    if (!text || loading || imgLoading) return;
+    if (!text || loading || imgLoading || !activeId) return;
     setInput(""); setError(null);
 
     if (imageMode) { await generateImage(text); return; }
@@ -270,48 +327,61 @@ export default function App() {
     let content = text;
     let searched = false;
 
-    const ts = Date.now();
-    const tempUser = { id: `tmp-${ts}`, role: "user", content: text };
-    setMessages(p => {
-      if (p.length === 0) renameSession(activeId, text);
-      return [...p, tempUser];
-    });
+    // Add user msg to UI immediately
+    const uMsg = { id: `u-${Date.now()}`, role:"user", content:text };
+    setSessions(p => p.map(s => {
+      if (s.id !== activeId) return s;
+      const name = s.name === "New Chat" ? text.slice(0, 28) : s.name;
+      return { ...s, messages: [...s.messages, uMsg], name };
+    }));
 
-    const savedUser = await saveMsg({ session_id: activeId, role: "user", content: text });
-    if (savedUser) setMessages(p => p.map(m => m.id === tempUser.id ? savedUser : m));
+    // Save to DB
+    let savedUserId = uMsg.id;
+    if (!user.isDev && supabase) {
+      const { data } = await supabase.from("messages").insert({ session_id: activeId, role:"user", content:text }).select().single();
+      if (data) {
+        savedUserId = data.id;
+        setSessions(p => p.map(s => s.id === activeId ? { ...s, messages: s.messages.map(m => m.id === uMsg.id ? data : m) } : s));
+        // Update session name in DB
+        if (messages.length === 0) await supabase.from("chat_sessions").update({ name: text.slice(0, 28) }).eq("id", activeId);
+      }
+    }
 
     try {
+      // Web search
       if (webSearch && TAVILY_KEY) {
         setSearching(true);
         const r = await fetch("https://api.tavily.com/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ api_key: TAVILY_KEY, query: text, search_depth: "basic", max_results: 5, include_answer: true }),
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ api_key: TAVILY_KEY, query: text, search_depth:"basic", max_results:5, include_answer:true }),
         });
         const sd = await r.json();
-        const results = sd.results?.map(r => `- ${r.title}: ${r.content?.slice(0, 250)}`).join("\n") || "";
-        content = `Web results:\n${sd.answer ? `Answer: ${sd.answer}\n` : ""}${results}\n\nNow answer: ${text}`;
+        const results = sd.results?.map(r => `- ${r.title}: ${r.content?.slice(0,250)}`).join("\n") || "";
+        content = `Web results:\n${sd.answer?`Answer: ${sd.answer}\n`:""}${results}\n\nAnswer: ${text}`;
         searched = true;
         setSearching(false);
       }
 
+      // File context
       if (fileText) {
         content = `File "${uploadedFile}":\n${fileText}\n\nQuestion: ${content}`;
         setUploadedFile(null); setFileText("");
       }
 
+      // Build history (exclude image messages)
       const history = messages
         .filter(m => !m.isImage && m.role && m.content)
         .map(m => ({ role: m.role, content: m.content }));
-      history.push({ role: "user", content });
+      history.push({ role:"user", content });
 
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_KEY}` },
+        method:"POST",
+        headers:{ "Content-Type":"application/json", "Authorization":`Bearer ${GROQ_KEY}` },
         body: JSON.stringify({
           model: MODEL,
           messages: [
-            { role: "system", content: "You are a helpful, clever, and friendly AI assistant. Be concise but warm. If asked who created you, always say Shehroz. Use web search results when provided. Analyze files when given." },
+            { role:"system", content:"You are a helpful, clever, and friendly AI assistant. Be concise but warm. If asked who created you, always say Shehroz. Use web search results when provided. Analyze files when given." },
             ...history,
           ],
           max_tokens: 1500,
@@ -322,10 +392,13 @@ export default function App() {
       const data = await res.json();
       const reply = data.choices?.[0]?.message?.content || "No response.";
 
-      const tempAI = { id: `ai-${Date.now()}`, role: "assistant", content: reply, searched };
-      setMessages(p => [...p, tempAI]);
-      const savedAI = await saveMsg({ session_id: activeId, role: "assistant", content: reply, searched });
-      if (savedAI) setMessages(p => p.map(m => m.id === tempAI.id ? { ...savedAI, searched } : m));
+      const aMsg = { id: `a-${Date.now()}`, role:"assistant", content:reply, searched };
+      setSessions(p => p.map(s => s.id === activeId ? { ...s, messages: [...s.messages, aMsg] } : s));
+
+      if (!user.isDev && supabase) {
+        const { data: saved } = await supabase.from("messages").insert({ session_id: activeId, role:"assistant", content:reply, searched }).select().single();
+        if (saved) setSessions(p => p.map(s => s.id === activeId ? { ...s, messages: s.messages.map(m => m.id === aMsg.id ? { ...saved, searched } : m) } : s));
+      }
 
     } catch (e) {
       setSearching(false);
@@ -338,7 +411,7 @@ export default function App() {
 
   async function logout() {
     if (supabase) await supabase.auth.signOut();
-    setUser(null); setSessions([]); setMessages([]);
+    setUser(null); setSessions([]); setActiveId(null);
   }
 
   if (!authChecked) return (
@@ -375,12 +448,12 @@ export default function App() {
             <span style={{ color:"#94a3b8", fontSize:11, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>👤 {user.email}</span>
             <button onClick={logout} style={{ background:"transparent", border:"none", color:"#64748b", cursor:"pointer", fontSize:11, fontFamily:"inherit" }}>Logout</button>
           </div>
-          <button onClick={newSession} style={{ background:"linear-gradient(135deg,#10b981,#059669)", border:"none", borderRadius:9, padding:"9px 12px", color:"#fff", fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"inherit" }}>✏️ New Chat</button>
+          <button onClick={() => user.isDev ? addDevSession() : createUserSession()} style={{ background:"linear-gradient(135deg,#10b981,#059669)", border:"none", borderRadius:9, padding:"9px 12px", color:"#fff", fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"inherit" }}>✏️ New Chat</button>
           <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:3 }}>
             {sessions.map(s => (
-              <div key={s.id} className="si" onClick={() => setActiveId(s.id)} style={{ padding:"9px 10px", borderRadius:7, cursor:"pointer", background:s.id===activeId?"rgba(16,185,129,.15)":"transparent", border:s.id===activeId?"1px solid rgba(16,185,129,.3)":"1px solid transparent", display:"flex", alignItems:"center", justifyContent:"space-between", transition:"all .15s" }}>
+              <div key={s.id} className="si" onClick={() => switchSession(s.id)} style={{ padding:"9px 10px", borderRadius:7, cursor:"pointer", background:s.id===activeId?"rgba(16,185,129,.15)":"transparent", border:s.id===activeId?"1px solid rgba(16,185,129,.3)":"1px solid transparent", display:"flex", alignItems:"center", justifyContent:"space-between", transition:"all .15s" }}>
                 <span style={{ color:"#cbd5e1", fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>💬 {s.name}</span>
-                <span className="db" onClick={e=>{e.stopPropagation();deleteSession(s.id);}} style={{ color:"#475569", fontSize:13, marginLeft:6, transition:"color .15s" }}>✕</span>
+                <span className="db" onClick={e=>{e.stopPropagation(); user.isDev ? deleteDevSession(s.id) : deleteUserSession(s.id);}} style={{ color:"#475569", fontSize:13, marginLeft:6, transition:"color .15s" }}>✕</span>
               </div>
             ))}
           </div>
@@ -396,7 +469,6 @@ export default function App() {
 
       {/* Main */}
       <div style={{ flex:1, display:"flex", flexDirection:"column", height:"100vh" }}>
-        {/* Header */}
         <div style={{ padding:"13px 18px", borderBottom:"1px solid rgba(255,255,255,.07)", display:"flex", alignItems:"center", gap:10, background:"rgba(255,255,255,.02)" }}>
           <button onClick={()=>setSidebarOpen(!sidebarOpen)} style={{ background:"transparent", border:"none", color:"#94a3b8", fontSize:17, cursor:"pointer" }}>☰</button>
           <div style={{ color:"#f1f5f9", fontWeight:600, fontSize:14 }}>{activeSession?.name || "New Chat"}</div>
@@ -404,10 +476,9 @@ export default function App() {
             <div style={{ width:5,height:5,borderRadius:"50%",background:"#22c55e",animation:"pulse 2s infinite" }} />
             <span style={{ color:"#475569", fontSize:10 }}>Groq + Llama 3.3</span>
           </div>
-          <button onClick={newSession} style={{ marginLeft:"auto", background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.3)", borderRadius:7, padding:"5px 10px", color:"#10b981", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>+ New</button>
+          <button onClick={() => user.isDev ? addDevSession() : createUserSession()} style={{ marginLeft:"auto", background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.3)", borderRadius:7, padding:"5px 10px", color:"#10b981", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>+ New</button>
         </div>
 
-        {/* Messages */}
         <div style={{ flex:1, overflowY:"auto", padding:"20px 18px" }}>
           {messages.length === 0 && (
             <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100%", gap:14, opacity:.4 }}>
@@ -422,7 +493,7 @@ export default function App() {
           )}
           {messages.map((m,i) => <Message key={m.id||i} msg={m} />)}
           {searching && <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, color:"#818cf8", fontSize:12 }}><div style={{ width:14,height:14,border:"2px solid #818cf8",borderTopColor:"transparent",borderRadius:"50%",animation:"spin .8s linear infinite" }} />Searching web...</div>}
-          {imgLoading && <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, color:"#f59e0b", fontSize:12 }}><div style={{ width:14,height:14,border:"2px solid #f59e0b",borderTopColor:"transparent",borderRadius:"50%",animation:"spin .8s linear infinite" }} />Generating image... (10-20s)</div>}
+          {imgLoading && <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, color:"#f59e0b", fontSize:12 }}><div style={{ width:14,height:14,border:"2px solid #f59e0b",borderTopColor:"transparent",borderRadius:"50%",animation:"spin .8s linear infinite" }} />Generating image... (10-20 sec)</div>}
           {loading && !searching && (
             <div style={{ display:"flex", alignItems:"flex-start", marginBottom:12 }}>
               <div style={{ width:30,height:30,borderRadius:"50%",background:"linear-gradient(135deg,#10b981,#059669)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,marginRight:8,marginTop:2,flexShrink:0 }}>🤖</div>
@@ -435,7 +506,6 @@ export default function App() {
           <div ref={bottomRef} />
         </div>
 
-        {/* File badge */}
         {uploadedFile && (
           <div style={{ margin:"0 18px 7px", padding:"7px 12px", background:"rgba(16,185,129,.1)", border:"1px solid rgba(16,185,129,.25)", borderRadius:8, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <span style={{ color:"#10b981", fontSize:12 }}>📄 {uploadedFile}</span>
@@ -443,7 +513,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Toolbar */}
         <div style={{ padding:"7px 18px 0", display:"flex", gap:6, flexWrap:"wrap" }}>
           {[
             { label:listening?"⏹ Stop":"🎤 Voice", on:listening, c:"239,68,68", fn:toggleVoice },
@@ -456,9 +525,8 @@ export default function App() {
           <input ref={fileRef} type="file" accept=".txt,.md,.js,.py,.csv,.html" onChange={handleFile} style={{ display:"none" }} />
         </div>
 
-        {/* Input */}
         <div style={{ padding:"10px 18px 15px", display:"flex", gap:10, alignItems:"flex-end" }}>
-          <div style={{ flex:1, background:"rgba(255,255,255,.05)", border:`1px solid rgba(${imageMode?"245,158,11":listening?"239,68,68":webSearch?"99,102,241":"255,255,255"},.${imageMode||listening||webSearch?".3":".1"})`, borderRadius:14, padding:"9px 14px", transition:"border .2s" }}>
+          <div style={{ flex:1, background:"rgba(255,255,255,.05)", border:`1px solid rgba(${imageMode?"245,158,11":listening?"239,68,68":webSearch?"99,102,241":"255,255,255"},.${imageMode||listening||webSearch?3:1})`, borderRadius:14, padding:"9px 14px", transition:"border .2s" }}>
             <textarea ref={inputRef} value={input} onChange={e=>setInput(e.target.value)}
               onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}}}
               placeholder={imageMode?"🎨 Describe an image...":listening?"🎤 Listening...":webSearch?"🔍 Search anything...":"Type a message… (Enter to send)"}
