@@ -149,9 +149,9 @@ export default function App() {
     }
   }, [user?.id]);
 
-  // Load messages when session changes
+  // Load messages when session changes - only if activeId is valid
   useEffect(() => {
-    if (!activeId || !user) return;
+    if (!activeId || activeId === "null" || !user) return;
     if (user.isDev) { setMessages([]); return; }
     loadMessages(activeId);
   }, [activeId]);
@@ -177,7 +177,9 @@ export default function App() {
       setSessions(data);
       setActiveId(data[0].id);
     } else {
-      newSession();
+      // Create first session
+      const { data: newSess } = await supabase.from("chat_sessions").insert({ user_id: user.id, name: "New Chat" }).select().single();
+      if (newSess) { setSessions([newSess]); setActiveId(newSess.id); setMessages([]); }
     }
   }
 
@@ -192,7 +194,7 @@ export default function App() {
       const s = { id: `dev-${Date.now()}`, name: "New Chat" };
       setSessions(p => [s, ...p]); setActiveId(s.id); setMessages([]); return;
     }
-    if (!supabase) return;
+    if (!supabase || !user?.id) return;
     const { data } = await supabase.from("chat_sessions").insert({ user_id: user.id, name: "New Chat" }).select().single();
     if (data) { setSessions(p => [data, ...p]); setActiveId(data.id); setMessages([]); }
   }
@@ -229,7 +231,7 @@ export default function App() {
   }
 
   async function saveMsg(data) {
-    if (user?.isDev || !supabase) return null;
+    if (user?.isDev || !supabase || !activeId || activeId === "null") return null;
     const { data: saved } = await supabase.from("messages").insert(data).select().single();
     return saved;
   }
