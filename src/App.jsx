@@ -245,17 +245,21 @@ export default function App() {
       });
 
       if (!user?.isDev && supabase) {
-        const { data: u, error: uError } = await supabase.from("messages").insert({ session_id: activeId, role: "user", content: userContent }).select().single();
-        if (uError) throw uError;
+        try {
+          const { data: u, error: uError } = await supabase.from("messages").insert({ session_id: activeId, role: "user", content: userContent }).select().single();
+          if (uError) throw uError;
 
-        const { data: a, error: aError } = await supabase.from("messages").insert({ session_id: activeId, role: "assistant", content: prompt, is_image: true, image_url: imageUrl }).select().single();
-        if (aError) throw aError;
+          const { data: a, error: aError } = await supabase.from("messages").insert({ session_id: activeId, role: "assistant", content: prompt, is_image: true, image_url: imageUrl }).select().single();
+          if (aError) throw aError;
 
-        setMessages(prev => prev.map(msg => {
-          if (msg.id === uMsg.id) return u;
-          if (msg.id === aMsg.id) return { ...a, isImage: true, imageUrl };
-          return msg;
-        }));
+          setMessages(prev => prev.map(msg => {
+            if (msg.id === uMsg.id) return u;
+            if (msg.id === aMsg.id) return { ...a, isImage: true, imageUrl };
+            return msg;
+          }));
+        } catch (saveError) {
+          console.error("Image generated but message save failed", saveError);
+        }
       }
     } catch (e) { setError("Image generation failed. Try again!"); }
     finally { setGeneratingImage(false); }
@@ -481,4 +485,5 @@ export default function App() {
     </div>
   );
 }
+
 
