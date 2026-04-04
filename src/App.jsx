@@ -173,8 +173,8 @@ export default function App() {
   }, []);
 
   async function loadSessions() {
-    if (!supabase) return;
-    const { data } = await supabase.from("chat_sessions").select("*").order("created_at", { ascending: false });
+    if (!supabase || !user?.id) return;
+    const { data } = await supabase.from("chat_sessions").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
     setSessions(data || []);
     if (data?.length > 0) setActiveId(data[0].id);
     else createSession();
