@@ -1,18 +1,19 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
+// ── Config ────────────────────────────────────────────────────────────────────
 const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const TAVILY_KEY = import.meta.env.VITE_TAVILY_API_KEY;
 const MODEL = "llama-3.3-70b-versatile";
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_KEY
+);
 
-let supabase = null;
-try {
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_KEY;
-  if (url && key) supabase = createClient(url, key);
-} catch (e) {}
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function makeId() { return `local-${Date.now()}-${Math.random()}`; }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+// ── Auth Screen ───────────────────────────────────────────────────────────────
 function AuthScreen({ onAuth }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,13 +24,12 @@ function AuthScreen({ onAuth }) {
 
   function devAccess() {
     const s = prompt("Developer password:");
-    if (s === "Chatbotbyfuture") onAuth({ id: "dev", email: "dev@shehroz.dev", isDev: true });
+    if (s === "Chatbotbyfuture") onAuth({ id:"dev", email:"dev@shehroz.dev", isDev:true });
     else alert("Wrong password!");
   }
 
   async function submit() {
     if (!email || !password) return setError("Please fill in all fields");
-    if (!supabase) return setError("Auth service not available");
     setLoading(true); setError(""); setMsg("");
     try {
       if (isLogin) {
@@ -37,7 +37,7 @@ function AuthScreen({ onAuth }) {
         if (error) throw error;
         onAuth(data.user);
       } else {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
         setMsg("Account created! Please login."); setIsLogin(true);
       }
@@ -49,7 +49,7 @@ function AuthScreen({ onAuth }) {
     <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#0f1a0f,#0a1a12)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"Georgia,serif", padding:16 }}>
       <div style={{ width:"100%", maxWidth:380, background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:24, padding:36, boxShadow:"0 32px 80px rgba(0,0,0,.5)" }}>
         <div style={{ textAlign:"center", marginBottom:28 }}>
-          <div style={{ width:52,height:52,borderRadius:"50%",background:"linear-gradient(135deg,#10b981,#059669)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,margin:"0 auto 12px" }}>🤖</div>
+          <div style={{ width:52, height:52, borderRadius:"50%", background:"linear-gradient(135deg,#10b981,#059669)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, margin:"0 auto 12px" }}>🤖</div>
           <div style={{ color:"#f1f5f9", fontSize:20, fontWeight:700 }}>My AI Chatbot</div>
           <div style={{ color:"#475569", fontSize:12, marginTop:4 }}>Built by Shehroz ⚡</div>
         </div>
@@ -75,27 +75,27 @@ function AuthScreen({ onAuth }) {
   );
 }
 
-// ── Message ───────────────────────────────────────────────────────────────────
+// ── Message Component ─────────────────────────────────────────────────────────
 function Message({ msg }) {
   const isUser = msg.role === "user";
   const [copied, setCopied] = useState(false);
   return (
     <div style={{ display:"flex", justifyContent:isUser?"flex-end":"flex-start", marginBottom:14, animation:"fadeIn .3s ease" }}>
-      {!isUser && <div style={{ width:30,height:30,borderRadius:"50%",background:"linear-gradient(135deg,#10b981,#059669)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0,marginRight:8,marginTop:2 }}>🤖</div>}
+      {!isUser && <div style={{ width:30, height:30, borderRadius:"50%", background:"linear-gradient(135deg,#10b981,#059669)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, flexShrink:0, marginRight:8, marginTop:2 }}>🤖</div>}
       <div style={{ maxWidth:"73%", position:"relative" }}>
         <div style={{ padding:"11px 15px", borderRadius:isUser?"16px 16px 4px 16px":"16px 16px 16px 4px", background:isUser?"linear-gradient(135deg,#10b981,#059669)":"rgba(255,255,255,.06)", color:isUser?"#fff":"#e2e8f0", fontSize:14, lineHeight:1.6, border:isUser?"none":"1px solid rgba(255,255,255,.08)", whiteSpace:"pre-wrap", wordBreak:"break-word" }}>
           {msg.searched && <div style={{ background:"rgba(99,102,241,.15)", borderRadius:6, padding:"3px 8px", marginBottom:7, fontSize:10, color:"#818cf8" }}>🔍 Web search used</div>}
           {msg.isImage ? (
             <div>
               <div style={{ color:"#94a3b8", fontSize:11, marginBottom:7 }}>🎨 {msg.content}</div>
-              <img src={msg.imageUrl} alt="AI" style={{ width:"100%", maxWidth:280, borderRadius:10, display:"block", marginBottom:7 }} onError={e=>{ e.target.style.display="none"; }} />
+              <img src={msg.imageUrl} alt="AI" style={{ width:"100%", maxWidth:280, borderRadius:10, display:"block", marginBottom:7 }} onError={e=>e.target.style.display="none"} />
               <a href={msg.imageUrl} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:5, background:"rgba(255,255,255,.15)", borderRadius:7, padding:"4px 10px", color:"#fff", fontSize:11, textDecoration:"none" }}>⬇ Download</a>
             </div>
           ) : msg.content}
         </div>
         {!isUser && !msg.isImage && <button onClick={() => { navigator.clipboard.writeText(msg.content); setCopied(true); setTimeout(()=>setCopied(false),2000); }} style={{ position:"absolute", top:5, right:-26, background:"transparent", border:"none", cursor:"pointer", color:copied?"#10b981":"#475569", fontSize:12 }}>{copied?"✓":"⧉"}</button>}
       </div>
-      {isUser && <div style={{ width:30,height:30,borderRadius:"50%",background:"rgba(255,255,255,.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0,marginLeft:8,marginTop:2,border:"1px solid rgba(255,255,255,.15)" }}>👤</div>}
+      {isUser && <div style={{ width:30, height:30, borderRadius:"50%", background:"rgba(255,255,255,.1)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, flexShrink:0, marginLeft:8, marginTop:2, border:"1px solid rgba(255,255,255,.15)" }}>👤</div>}
     </div>
   );
 }
@@ -104,11 +104,8 @@ function Message({ msg }) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-
-  // sessions: { id, name, messages[] }
-  const [sessions, setSessions] = useState([]);
+  const [sessions, setSessions] = useState([]);   // [{ id, name, messages:[] }]
   const [activeId, setActiveId] = useState(null);
-
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
@@ -120,19 +117,16 @@ export default function App() {
   const [fileText, setFileText] = useState("");
   const [webSearch, setWebSearch] = useState(false);
   const [imageMode, setImageMode] = useState(false);
-
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const recogRef = useRef(null);
   const fileRef = useRef(null);
 
-  // Get active session and its messages
-  const activeSession = sessions.find(s => s.id === activeId);
+  const activeSession = sessions.find(s => s.id === activeId) || null;
   const messages = activeSession?.messages || [];
 
-  // ── Auth check ──
+  // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!supabase) { setAuthChecked(true); return; }
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null);
       setAuthChecked(true);
@@ -143,19 +137,18 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // ── Init sessions on login ──
+  // ── Load on login ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
     if (user.isDev) {
-      initDevSessions();
+      const s = { id: makeId(), name: "New Chat", messages: [] };
+      setSessions([s]); setActiveId(s.id);
     } else {
-      initUserSessions();
+      loadSessions(user.id);
     }
   }, [user?.id]);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages, loading, imgLoading, searching]);
-
-  // ── Voice ──
+  // ── Voice ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
@@ -167,103 +160,65 @@ export default function App() {
     recogRef.current = r;
   }, []);
 
-  // ── Dev mode: store everything in memory ──
-  function initDevSessions() {
-    const first = { id: `dev-${Date.now()}`, name: "New Chat", messages: [] };
-    setSessions([first]);
-    setActiveId(first.id);
-  }
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages, loading, imgLoading, searching]);
 
-  function addDevSession() {
-    const s = { id: `dev-${Date.now()}`, name: "New Chat", messages: [] };
-    setSessions(p => [s, ...p]);
-    setActiveId(s.id);
-  }
-
-  function updateDevMessages(sessionId, newMessages) {
-    setSessions(p => p.map(s => {
-      if (s.id !== sessionId) return s;
-      const name = s.name === "New Chat" && newMessages.length > 0
-        ? newMessages[0].content.slice(0, 28)
-        : s.name;
-      return { ...s, messages: newMessages, name };
-    }));
-  }
-
-  function deleteDevSession(id) {
-    setSessions(p => {
-      const rest = p.filter(s => s.id !== id);
-      if (rest.length === 0) {
-        const first = { id: `dev-${Date.now()}`, name: "New Chat", messages: [] };
-        setActiveId(first.id);
-        return [first];
-      }
-      if (activeId === id) setActiveId(rest[0].id);
-      return rest;
-    });
-  }
-
-  // ── User mode: store in Supabase ──
-  async function initUserSessions() {
-    if (!supabase || !user?.id) return;
-    const { data } = await supabase.from("chat_sessions").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+  // ── Session functions ─────────────────────────────────────────────────────
+  async function loadSessions(userId) {
+    const { data } = await supabase.from("chat_sessions").select("*").eq("user_id", userId).order("created_at", { ascending: false });
     if (data && data.length > 0) {
-      const sessionsWithMessages = data.map(s => ({ ...s, messages: [] }));
-      setSessions(sessionsWithMessages);
+      const withMsgs = data.map(s => ({ ...s, messages: [] }));
+      setSessions(withMsgs);
       setActiveId(data[0].id);
-      loadMessagesForSession(data[0].id, sessionsWithMessages);
-    } else {
-      createUserSession();
-    }
-  }
-
-  async function loadMessagesForSession(sessionId, currentSessions) {
-    if (!supabase) return;
-    const { data } = await supabase.from("messages").select("*").eq("session_id", sessionId).order("created_at", { ascending: true });
-    const msgs = data?.map(m => ({ ...m, isImage: m.is_image, imageUrl: m.image_url })) || [];
-    setSessions(p => (currentSessions || p).map(s => s.id === sessionId ? { ...s, messages: msgs } : s));
-  }
-
-  async function createUserSession() {
-    if (!supabase || !user?.id) return null;
-    const { data } = await supabase.from("chat_sessions").insert({ user_id: user.id, name: "New Chat" }).select().single();
-    if (data) {
-      setSessions(p => [{ ...data, messages: [] }, ...p]);
-      setActiveId(data.id);
-      return data.id;
-    }
-    return null;
-  }
-
-  async function deleteUserSession(id) {
-    if (supabase) await supabase.from("chat_sessions").delete().eq("id", id);
-    setSessions(p => {
-      const rest = p.filter(s => s.id !== id);
-      if (rest.length === 0) { createUserSession(); return []; }
-      if (activeId === id) {
-        setActiveId(rest[0].id);
-        loadMessagesForSession(rest[0].id, rest);
+      // load messages for first session
+      const { data: msgs } = await supabase.from("messages").select("*").eq("session_id", data[0].id).order("created_at", { ascending: true });
+      if (msgs) {
+        setSessions(p => p.map(s => s.id === data[0].id ? { ...s, messages: msgs.map(m => ({ ...m, isImage: m.is_image, imageUrl: m.image_url })) } : s));
       }
-      return rest;
-    });
+    } else {
+      await createSession(userId);
+    }
+  }
+
+  async function createSession(uid) {
+    const userId = uid || user?.id;
+    if (user?.isDev) {
+      const s = { id: makeId(), name: "New Chat", messages: [] };
+      setSessions(p => [s, ...p]); setActiveId(s.id); return;
+    }
+    if (!userId) return;
+    const { data } = await supabase.from("chat_sessions").insert({ user_id: userId, name: "New Chat" }).select().single();
+    if (data) { setSessions(p => [{ ...data, messages: [] }, ...p]); setActiveId(data.id); }
   }
 
   async function switchSession(id) {
     setActiveId(id);
-    if (!user?.isDev) {
-      const session = sessions.find(s => s.id === id);
-      if (session && session.messages.length === 0) {
-        loadMessagesForSession(id, null);
+    if (user?.isDev) return;
+    const already = sessions.find(s => s.id === id);
+    if (already?.messages?.length > 0) return; // already loaded
+    const { data } = await supabase.from("messages").select("*").eq("session_id", id).order("created_at", { ascending: true });
+    if (data) setSessions(p => p.map(s => s.id === id ? { ...s, messages: data.map(m => ({ ...m, isImage: m.is_image, imageUrl: m.image_url })) } : s));
+  }
+
+  async function deleteSession(id) {
+    if (!user?.isDev) await supabase.from("chat_sessions").delete().eq("id", id);
+    setSessions(p => {
+      const rest = p.filter(s => s.id !== id);
+      if (activeId === id) {
+        if (rest.length > 0) { setActiveId(rest[0].id); if (!user?.isDev) switchSession(rest[0].id); }
+        else createSession();
       }
-    }
+      return rest;
+    });
   }
 
-  function toggleVoice() {
-    if (!recogRef.current) return alert("Use Chrome for voice!");
-    if (listening) { recogRef.current.stop(); setListening(false); }
-    else { recogRef.current.start(); setListening(true); }
+  function updateSessionMessages(sessionId, newMessages, newName) {
+    setSessions(p => p.map(s => {
+      if (s.id !== sessionId) return s;
+      return { ...s, messages: newMessages, name: newName || s.name };
+    }));
   }
 
+  // ── File upload ───────────────────────────────────────────────────────────
   function handleFile(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -273,104 +228,94 @@ export default function App() {
     e.target.value = "";
   }
 
-  // ── Image generation ──
-  async function generateImage(prompt) {
-    if (!activeId) return;
-    setImgLoading(true);
-    setError(null);
-    setImageMode(false);
-
-    const seed = Math.floor(Math.random() * 999999);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true&seed=${seed}&enhance=true`;
-
-    const uMsg = { id: `u-${Date.now()}`, role:"user", content:`🎨 ${prompt}` };
-    const aMsg = { id: `a-${Date.now()}`, role:"assistant", content:prompt, isImage:true, imageUrl };
-
-    if (user.isDev) {
-      const newMsgs = [...messages, uMsg, aMsg];
-      updateDevMessages(activeId, newMsgs);
-    } else {
-      // Add to UI immediately
-      setSessions(p => p.map(s => s.id === activeId ? { ...s, messages: [...s.messages, uMsg, aMsg] } : s));
-      // Save to DB
-      if (supabase) {
-        const [{ data: u }, { data: a }] = await Promise.all([
-          supabase.from("messages").insert({ session_id: activeId, role:"user", content:`🎨 ${prompt}` }).select().single(),
-          supabase.from("messages").insert({ session_id: activeId, role:"assistant", content:prompt, is_image:true, image_url:imageUrl }).select().single(),
-        ]);
-        if (u && a) {
-          setSessions(p => p.map(s => {
-            if (s.id !== activeId) return s;
-            return { ...s, messages: s.messages.map(m => m.id === uMsg.id ? u : m.id === aMsg.id ? { ...a, isImage:true, imageUrl } : m) };
-          }));
-        }
-        // Update session name
-        if (messages.length === 0) {
-          const name = `Image: ${prompt.slice(0, 25)}`;
-          await supabase.from("chat_sessions").update({ name }).eq("id", activeId);
-          setSessions(p => p.map(s => s.id === activeId ? { ...s, name } : s));
-        }
-      }
-    }
-    setImgLoading(false);
+  function toggleVoice() {
+    if (!recogRef.current) return alert("Use Chrome for voice!");
+    if (listening) { recogRef.current.stop(); setListening(false); }
+    else { recogRef.current.start(); setListening(true); }
   }
 
-  // ── Send message ──
+  // ── Image generation ──────────────────────────────────────────────────────
+  async function generateImage(prompt) {
+    const sid = activeId;
+    if (!sid) return;
+    setImgLoading(true); setError(null); setImageMode(false);
+    try {
+      const seed = Math.floor(Math.random() * 999999);
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true&seed=${seed}`;
+      const uMsg = { id: makeId(), role:"user", content:`🎨 ${prompt}` };
+      const aMsg = { id: makeId(), role:"assistant", content:prompt, isImage:true, imageUrl };
+      const currentMsgs = sessions.find(s => s.id === sid)?.messages || [];
+      const newMsgs = [...currentMsgs, uMsg, aMsg];
+      const newName = currentMsgs.length === 0 ? `Image: ${prompt.slice(0,25)}` : null;
+      updateSessionMessages(sid, newMsgs, newName);
+      if (!user?.isDev) {
+        const [{ data: u }, { data: a }] = await Promise.all([
+          supabase.from("messages").insert({ session_id: sid, role:"user", content:`🎨 ${prompt}` }).select().single(),
+          supabase.from("messages").insert({ session_id: sid, role:"assistant", content:prompt, is_image:true, image_url:imageUrl }).select().single(),
+        ]);
+        if (u && a) updateSessionMessages(sid, [...currentMsgs, u, { ...a, isImage:true, imageUrl }], newName);
+        if (newName) await supabase.from("chat_sessions").update({ name: newName }).eq("id", sid);
+      }
+    } catch { setError("Image generation failed. Try again!"); }
+    finally { setImgLoading(false); }
+  }
+
+  // ── Send message ──────────────────────────────────────────────────────────
   async function sendMessage() {
     const text = input.trim();
-    if (!text || loading || imgLoading || !activeId) return;
-    setInput(""); setError(null);
+    if (!text || loading || imgLoading) return;
+    const sid = activeId;
+    if (!sid) return;
 
+    setInput(""); setError(null);
     if (imageMode) { await generateImage(text); return; }
 
     setLoading(true);
-    let content = text;
-    let searched = false;
 
-    // Add user msg to UI immediately
-    const uMsg = { id: `u-${Date.now()}`, role:"user", content:text };
-    setSessions(p => p.map(s => {
-      if (s.id !== activeId) return s;
-      const name = s.name === "New Chat" ? text.slice(0, 28) : s.name;
-      return { ...s, messages: [...s.messages, uMsg], name };
-    }));
+    // snapshot current messages BEFORE any state updates
+    const prevMsgs = sessions.find(s => s.id === sid)?.messages || [];
+    const isFirstMsg = prevMsgs.length === 0;
+    const sessionName = isFirstMsg ? text.slice(0, 28) : null;
 
-    // Save to DB
-    let savedUserId = uMsg.id;
-    if (!user.isDev && supabase) {
-      const { data } = await supabase.from("messages").insert({ session_id: activeId, role:"user", content:text }).select().single();
-      if (data) {
-        savedUserId = data.id;
-        setSessions(p => p.map(s => s.id === activeId ? { ...s, messages: s.messages.map(m => m.id === uMsg.id ? data : m) } : s));
-        // Update session name in DB
-        if (messages.length === 0) await supabase.from("chat_sessions").update({ name: text.slice(0, 28) }).eq("id", activeId);
+    // add user msg to UI immediately
+    const uMsg = { id: makeId(), role:"user", content:text };
+    updateSessionMessages(sid, [...prevMsgs, uMsg], sessionName);
+
+    // save to DB
+    if (!user?.isDev) {
+      const { data: savedU } = await supabase.from("messages").insert({ session_id: sid, role:"user", content:text }).select().single();
+      if (savedU) {
+        setSessions(p => p.map(s => s.id === sid ? { ...s, messages: s.messages.map(m => m.id === uMsg.id ? savedU : m) } : s));
       }
+      if (isFirstMsg && sessionName) await supabase.from("chat_sessions").update({ name: sessionName }).eq("id", sid);
     }
 
     try {
-      // Web search
+      let content = text;
+      let searched = false;
+
+      // web search
       if (webSearch && TAVILY_KEY) {
         setSearching(true);
         const r = await fetch("https://api.tavily.com/search", {
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
+          method:"POST", headers:{ "Content-Type":"application/json" },
           body: JSON.stringify({ api_key: TAVILY_KEY, query: text, search_depth:"basic", max_results:5, include_answer:true }),
         });
         const sd = await r.json();
         const results = sd.results?.map(r => `- ${r.title}: ${r.content?.slice(0,250)}`).join("\n") || "";
-        content = `Web results:\n${sd.answer?`Answer: ${sd.answer}\n`:""}${results}\n\nAnswer: ${text}`;
+        content = `Web results:\n${sd.answer?`Answer: ${sd.answer}\n`:""}${results}\n\nNow answer: ${text}`;
         searched = true;
         setSearching(false);
       }
 
-      // File context
+      // file context
       if (fileText) {
         content = `File "${uploadedFile}":\n${fileText}\n\nQuestion: ${content}`;
         setUploadedFile(null); setFileText("");
       }
 
-      // Build history (exclude image messages)
-      const history = messages
+      // build history from prevMsgs snapshot
+      const history = prevMsgs
         .filter(m => !m.isImage && m.role && m.content)
         .map(m => ({ role: m.role, content: m.content }));
       history.push({ role:"user", content });
@@ -381,7 +326,7 @@ export default function App() {
         body: JSON.stringify({
           model: MODEL,
           messages: [
-            { role:"system", content:"You are a helpful, clever, and friendly AI assistant. Be concise but warm. If asked who created you, always say Shehroz. Use web search results when provided. Analyze files when given." },
+            { role:"system", content:"You are a helpful, clever, and friendly AI assistant. Be concise but warm. If asked who created you, say Shehroz. Use web search results when provided. Analyze files when given." },
             ...history,
           ],
           max_tokens: 1500,
@@ -392,12 +337,14 @@ export default function App() {
       const data = await res.json();
       const reply = data.choices?.[0]?.message?.content || "No response.";
 
-      const aMsg = { id: `a-${Date.now()}`, role:"assistant", content:reply, searched };
-      setSessions(p => p.map(s => s.id === activeId ? { ...s, messages: [...s.messages, aMsg] } : s));
+      // add AI reply to UI
+      const aMsg = { id: makeId(), role:"assistant", content:reply, searched };
+      setSessions(p => p.map(s => s.id === sid ? { ...s, messages: [...s.messages, aMsg] } : s));
 
-      if (!user.isDev && supabase) {
-        const { data: saved } = await supabase.from("messages").insert({ session_id: activeId, role:"assistant", content:reply, searched }).select().single();
-        if (saved) setSessions(p => p.map(s => s.id === activeId ? { ...s, messages: s.messages.map(m => m.id === aMsg.id ? { ...saved, searched } : m) } : s));
+      // save to DB
+      if (!user?.isDev) {
+        const { data: savedA } = await supabase.from("messages").insert({ session_id: sid, role:"assistant", content:reply, searched }).select().single();
+        if (savedA) setSessions(p => p.map(s => s.id === sid ? { ...s, messages: s.messages.map(m => m.id === aMsg.id ? { ...savedA, searched } : m) } : s));
       }
 
     } catch (e) {
@@ -410,10 +357,11 @@ export default function App() {
   }
 
   async function logout() {
-    if (supabase) await supabase.auth.signOut();
+    await supabase.auth.signOut();
     setUser(null); setSessions([]); setActiveId(null);
   }
 
+  // ── Render ────────────────────────────────────────────────────────────────
   if (!authChecked) return (
     <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#0f1a0f,#0a1a12)", display:"flex", alignItems:"center", justifyContent:"center", color:"#10b981", fontFamily:"Georgia,serif", fontSize:15 }}>Loading...</div>
   );
@@ -429,12 +377,9 @@ export default function App() {
         *{box-sizing:border-box;margin:0;padding:0}
         input,textarea{font-family:inherit}
         textarea::placeholder,input::placeholder{color:rgba(148,163,184,.5)}
-        textarea:focus,input:focus{outline:none}
-        textarea{resize:none}
-        ::-webkit-scrollbar{width:3px}
-        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
-        .si:hover{background:rgba(255,255,255,.07)!important}
-        .db:hover{color:#f87171!important}
+        textarea:focus,input:focus{outline:none}textarea{resize:none}
+        ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+        .si:hover{background:rgba(255,255,255,.07)!important}.db:hover{color:#f87171!important}
       `}</style>
 
       {/* Sidebar */}
@@ -448,12 +393,12 @@ export default function App() {
             <span style={{ color:"#94a3b8", fontSize:11, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>👤 {user.email}</span>
             <button onClick={logout} style={{ background:"transparent", border:"none", color:"#64748b", cursor:"pointer", fontSize:11, fontFamily:"inherit" }}>Logout</button>
           </div>
-          <button onClick={() => user.isDev ? addDevSession() : createUserSession()} style={{ background:"linear-gradient(135deg,#10b981,#059669)", border:"none", borderRadius:9, padding:"9px 12px", color:"#fff", fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"inherit" }}>✏️ New Chat</button>
+          <button onClick={() => createSession()} style={{ background:"linear-gradient(135deg,#10b981,#059669)", border:"none", borderRadius:9, padding:"9px 12px", color:"#fff", fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"inherit" }}>✏️ New Chat</button>
           <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:3 }}>
             {sessions.map(s => (
               <div key={s.id} className="si" onClick={() => switchSession(s.id)} style={{ padding:"9px 10px", borderRadius:7, cursor:"pointer", background:s.id===activeId?"rgba(16,185,129,.15)":"transparent", border:s.id===activeId?"1px solid rgba(16,185,129,.3)":"1px solid transparent", display:"flex", alignItems:"center", justifyContent:"space-between", transition:"all .15s" }}>
                 <span style={{ color:"#cbd5e1", fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>💬 {s.name}</span>
-                <span className="db" onClick={e=>{e.stopPropagation(); user.isDev ? deleteDevSession(s.id) : deleteUserSession(s.id);}} style={{ color:"#475569", fontSize:13, marginLeft:6, transition:"color .15s" }}>✕</span>
+                <span className="db" onClick={e=>{e.stopPropagation();deleteSession(s.id);}} style={{ color:"#475569", fontSize:13, marginLeft:6, transition:"color .15s" }}>✕</span>
               </div>
             ))}
           </div>
@@ -476,7 +421,7 @@ export default function App() {
             <div style={{ width:5,height:5,borderRadius:"50%",background:"#22c55e",animation:"pulse 2s infinite" }} />
             <span style={{ color:"#475569", fontSize:10 }}>Groq + Llama 3.3</span>
           </div>
-          <button onClick={() => user.isDev ? addDevSession() : createUserSession()} style={{ marginLeft:"auto", background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.3)", borderRadius:7, padding:"5px 10px", color:"#10b981", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>+ New</button>
+          <button onClick={()=>createSession()} style={{ marginLeft:"auto", background:"rgba(16,185,129,.15)", border:"1px solid rgba(16,185,129,.3)", borderRadius:7, padding:"5px 10px", color:"#10b981", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>+ New</button>
         </div>
 
         <div style={{ flex:1, overflowY:"auto", padding:"20px 18px" }}>
@@ -485,7 +430,7 @@ export default function App() {
               <div style={{ fontSize:44 }}>🤖</div>
               <div style={{ color:"#94a3b8", fontSize:14, textAlign:"center" }}>Hi {user.email.split("@")[0]}! How can I help?</div>
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", justifyContent:"center" }}>
-                {["💬 Chat","🎤 Voice","🔍 Web search","🎨 Image","📄 File"].map(t=>(
+                {["💬 Chat","🎤 Voice","🔍 Web","🎨 Image","📄 File"].map(t=>(
                   <div key={t} style={{ background:"rgba(255,255,255,.05)", border:"1px solid rgba(255,255,255,.08)", borderRadius:7, padding:"5px 10px", color:"#475569", fontSize:11 }}>{t}</div>
                 ))}
               </div>
