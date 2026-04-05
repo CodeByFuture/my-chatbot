@@ -149,11 +149,11 @@ export default function App() {
     const current = sessions.find(s => s.id === sid);
     const prev = current?.messages || [];
     const isFirst = prev.length === 0;
+    const newName = isFirst ? text.slice(0, 28) : undefined;
 
     // Add user message immediately
     const uMsg = { id: makeId(), role:"user", content:text };
-    const withUser = [...prev, uMsg];
-    updateSession(sid, withUser, isFirst ? text.slice(0, 28) : undefined);
+    setSessions(p => p.map(s => s.id === sid ? { ...s, messages: [...s.messages, uMsg], name: newName || s.name } : s));
 
     setLoading(true);
     try {
@@ -180,7 +180,7 @@ export default function App() {
         setUploadedFile(null); setFileText("");
       }
 
-      // Build history from snapshot
+      // Build history from prev snapshot
       const history = prev
         .filter(m => !m.isImage && m.role && m.content)
         .map(m => ({ role: m.role, content: m.content }));
@@ -203,6 +203,7 @@ export default function App() {
       const data = await res.json();
       const reply = data.choices?.[0]?.message?.content || "No response.";
 
+      // Add AI reply using functional update to get latest state
       const aMsg = { id: makeId(), role:"assistant", content:reply, searched };
       setSessions(p => p.map(s => s.id === sid ? { ...s, messages: [...s.messages, aMsg] } : s));
 
