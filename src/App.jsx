@@ -137,9 +137,9 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // ── Load on login ─────────────────────────────────────────────────────────
+  // ── Load on login — only once when user.id changes ────────────────────────
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
     if (user.isDev) {
       const s = { id: makeId(), name: "New Chat", messages: [] };
       setSessions([s]); setActiveId(s.id);
@@ -175,7 +175,16 @@ export default function App() {
         setSessions(p => p.map(s => s.id === data[0].id ? { ...s, messages: msgs.map(m => ({ ...m, isImage: m.is_image, imageUrl: m.image_url })) } : s));
       }
     } else {
-      await createSession(userId);
+      // No sessions yet — create one fresh
+      const { data: newSession } = await supabase
+        .from("chat_sessions")
+        .insert({ user_id: userId, name: "New Chat" })
+        .select()
+        .single();
+      if (newSession) {
+        setSessions([{ ...newSession, messages: [] }]);
+        setActiveId(newSession.id);
+      }
     }
   }
 
@@ -186,7 +195,12 @@ export default function App() {
       setSessions(p => [s, ...p]); setActiveId(s.id); return;
     }
     if (!userId) return;
-    const { data } = await supabase.from("chat_sessions").insert({ user_id: userId, name: "New Chat" }).select().single();
+    const { data, error } = await supabase
+      .from("chat_sessions")
+      .insert({ user_id: userId, name: "New Chat" })
+      .select()
+      .single();
+    if (error) { console.error("createSession error:", error); return; }
     if (data) { setSessions(p => [{ ...data, messages: [] }, ...p]); setActiveId(data.id); }
   }
 
