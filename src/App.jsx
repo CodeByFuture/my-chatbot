@@ -125,7 +125,10 @@ export default function App() {
     setImgLoading(true); setError(null); setImageMode(false);
     try {
       const seed = Math.floor(Math.random() * 999999);
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true&seed=${seed}`;
+      // Enhanced prompt for better quality
+      const enhancedPrompt = `${prompt}, highly detailed, professional quality, sharp focus, 4k`;
+      // Try Pollinations with flux model for better quality
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=768&height=768&nologo=true&seed=${seed}&model=flux&enhance=true`;
       const current = sessions.find(s => s.id === sid);
       const prev = current?.messages || [];
       const uMsg = { id: makeId(), role:"user", content:`🎨 ${prompt}` };
@@ -160,16 +163,24 @@ export default function App() {
       let content = text;
       let searched = false;
 
-      // Web search
+      // Web search - improved accuracy with advanced depth
       if (webSearch && TAVILY_KEY) {
         setSearching(true);
         const r = await fetch("https://api.tavily.com/search", {
           method:"POST", headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({ api_key: TAVILY_KEY, query: text, search_depth:"basic", max_results:5, include_answer:true }),
+          body: JSON.stringify({ 
+            api_key: TAVILY_KEY, 
+            query: text, 
+            search_depth: "advanced",
+            max_results: 7,
+            include_answer: true,
+            include_raw_content: false,
+            include_domains: [],
+          }),
         });
         const sd = await r.json();
-        const results = sd.results?.map(r => `- ${r.title}: ${r.content?.slice(0,250)}`).join("\n") || "";
-        content = `Web results:\n${sd.answer?`Answer: ${sd.answer}\n`:""}${results}\n\nNow answer: ${text}`;
+        const results = sd.results?.map(r => `Source: ${r.title}\nURL: ${r.url}\nInfo: ${r.content?.slice(0,400)}`).join("\n\n") || "";
+        content = `Today's date: ${new Date().toDateString()}\n\nWeb search results for "${text}":\n${sd.answer?`Direct Answer: ${sd.answer}\n\n`:""}${results}\n\nBased on these search results, answer accurately and cite sources where relevant: ${text}`;
         searched = true;
         setSearching(false);
       }
@@ -180,9 +191,10 @@ export default function App() {
         setUploadedFile(null); setFileText("");
       }
 
-      // Build history from prev snapshot
+      // Build history from prev snapshot - keep last 20 messages for better context
       const history = prev
         .filter(m => !m.isImage && m.role && m.content)
+        .slice(-20)
         .map(m => ({ role: m.role, content: m.content }));
       history.push({ role:"user", content });
 
@@ -192,10 +204,10 @@ export default function App() {
         body: JSON.stringify({
           model: MODEL,
           messages: [
-            { role:"system", content:"You are a helpful, clever, and friendly AI assistant. Be concise but warm. If asked who created you, always say Shehroz. Use web search results when provided. Analyze files when given." },
+            { role:"system", content:`You are a helpful, clever, and friendly AI assistant named "My AI Chatbot", built by Shehroz. Be concise but warm. Always remember what was discussed earlier in the conversation and refer back to it when relevant. If asked who created you, always say Shehroz. Use web search results when provided and cite them. Analyze files thoroughly when given. Today's date is ${new Date().toDateString()}.` },
             ...history,
           ],
-          max_tokens: 1500,
+          max_tokens: 2000,
         }),
       });
 
